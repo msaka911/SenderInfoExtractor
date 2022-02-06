@@ -1,0 +1,139 @@
+import requests
+import re
+from bs4 import BeautifulSoup
+import json
+import urllib
+from tabulate import*
+from datetime import date
+from tkinter import *
+from tkinter import filedialog
+import pandas as pd
+
+
+ws = Tk()
+ws.title("Payee Info Extraction")
+ws.geometry("700x600+500+100")
+ws['bg']='grey'
+
+field1=StringVar()
+field2=StringVar()
+
+#Image source need to be added
+"""img = ImageTk.PhotoImage(Image.open("path"))
+panel = ws.Label(root, image = img)
+panel.pack(side = "top", fill = "both", expand = "yes")"""
+
+"""txtarea = Text(ws, width=75, height=25,font="Helvetica 15 bold")
+txtarea.pack(pady=20)"""
+
+Field1=Label(ws,text="Claim Number",width=15,height=1)
+Field1.place(relx=0.15,rely=0.75)
+first=Entry(ws,font="Helvetica 15 bold")
+first.place(height=40,relx=0.15,rely=0.8)
+"""value1=Entry(ws,width=8)
+value1.place(relx=0.4,rely=0.73)"""
+
+
+
+
+
+
+
+
+
+
+#__________________________________________________________________________
+def myfunction():
+    global payeeinfo
+    payeeinfo = []
+    today=date.today()
+    d1 = today.strftime("%Y/%m/%d")
+    case_number = first.get()[3:]
+    session=requests.Session()
+
+    payload={'identity':'identity',
+             'password':'password'}
+
+    s=session.post("loginwebsite", data=payload)
+    data=session.get(f"{case_number}")
+    content=data.content
+    soup=BeautifulSoup(content,"html.parser")
+
+    Case_number=soup.find("div",{"class":"title_left"}).find("h3")
+    Case_number=Case_number.text.split(" ")
+    casenumber=Case_number[3].replace("#","")
+
+
+    Policy_number=soup.find("div",{"class":"row policy_info"}).find_all("div",{"class":"form-group col-sm-3"})
+
+    for o in Policy_number:
+        if "Policy :" in o.text:
+            policynumber=o.text.split(" ")
+            policynumber=policynumber[2].replace("\xa0","")
+            break
+
+
+    email_template = soup.find("table", {"class": "table table-hover table-bordered"}).find_all("div",{"class": "col-sm-12"})
+    for o in email_template:
+       if "email" in o.text:
+           payeeinfo=o.text.split(":")
+           break
+    if payeeinfo:
+        payeeinfo[2]=payeeinfo[2].replace("\xa0","")
+        payeeinfo=payeeinfo[1:]
+        payeeinfo.append(d1)
+        payeeinfo.append(policynumber)
+        payeeinfo.append(casenumber)
+        return payeeinfo
+
+    else:
+        payeeinfo=["","","","Warning: ","By Cheque"]
+        return payeeinfo
+
+
+
+
+
+
+"""for n in final:
+    count=count+1
+    if count==23:
+       n=tabulate(tablecollection,headers='firstrow',tablefmt='grid')
+    print(n)"""
+
+#_____________________________
+
+def EmailModifier(event):
+    myfunction()
+    if first.get():
+       #txtarea.delete("1.0",END)
+       #ws.bind('<Return>', EmailModifier())
+       b = Text(ws,height=3,width=15,font="Helvetica 12 bold")
+       b.grid(row=2,column=1, padx=(10,0),pady=(50,0))
+       b.insert(END,payeeinfo[3])
+       b = Text(ws,height=3,width=15,font="Helvetica 12 bold")
+       b.grid(row=2,column=2,pady=(50,0))
+       b.insert(END, payeeinfo[4])
+       b = Text(ws,height=3,width=20,font="Helvetica 12 bold")
+       b.grid(row=2,column=3,pady=(50,0))
+       b.insert(END, payeeinfo[0])
+       b = Text(ws,height=3,width=35,font="Helvetica 12 bold")
+       b.grid(row=2,column=4,pady=(50,0),padx=(0,10))
+       b.insert(END, payeeinfo[1])
+
+    else:
+        b = Text(ws, height=10, width=20, font="Helvetica 15 bold")
+        b.insert(END, "Wrong Input")
+
+def onclick():
+    EmailModifier(event=None)
+
+button2=Button(
+    ws,
+    text="Submit",
+    command=onclick,
+    )
+button2.place(relx=0.86,rely=0.78)
+ws.bind('<Return>',EmailModifier)
+
+ws.mainloop()
